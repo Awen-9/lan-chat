@@ -43,13 +43,13 @@ test('身份证按校验位判断，假号码不误报', () => {
 });
 
 test('本机家目录路径会被拦截，占位符放行', () => {
-  const home = ['', 'Users', 'wuzeyu', 'secret.txt'].join('/');
+  const home = ['', 'Users', 'someone', 'secret.txt'].join('/');
   assert.deepStrictEqual(rules(scanText(`文件在 ${home}`)), ['home-path']);
   assert.deepStrictEqual(scanText('文件在 /Users/<你的用户名>/secret.txt'), []);
 });
 
 test('Windows 个人目录与本地盘符会被拦截', () => {
-  const winHome = 'C' + ':' + '\\' + 'Users' + '\\' + 'wuzeyu';
+  const winHome = 'C' + ':' + '\\' + 'Users' + '\\' + 'someone';
   assert.deepStrictEqual(rules(scanText(`路径 ${winHome}`)), ['win-user-path']);
 
   const drive = 'D' + ':' + '\\' + 'Dev' + '\\' + 'bootstrap';
