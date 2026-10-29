@@ -1,0 +1,5 @@
+#!/bin/sh
+# 提交前检查：个人信息、密钥、本机路径不进仓库
+# 由 `npm run hooks:install`（或 npm install 时的 prepare）装到 core.hooksPath
+root=$(git rev-parse --show-toplevel) || exit 0
+exec node "$root/scripts/privacy-check.cjs" --staged

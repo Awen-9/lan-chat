@@ -1,7 +1,7 @@
 {
   "name": "lan-chat",
   "version": "1.0.0",
-  "description": "局域网聊天室 + 文件互传（Electron 桌面应用，零运行时依赖）",
+  "description": "局域网聊天室 + 文件互传（Electron 桌面应用，Windows / macOS / Linux 通用）",
   "main": "main.js",
   "author": "Awen-9",
   "license": "MIT",
@@ -9,8 +9,15 @@
     "start": "electron .",
     "dev": "electron .",
     "server": "node server.js",
+    "check:privacy": "node scripts/privacy-check.cjs --all",
+    "check:privacy:staged": "node scripts/privacy-check.cjs --staged",
+    "test:privacy": "node --test scripts/privacy-check.test.cjs",
+    "hooks:install": "git config core.hooksPath .githooks",
     "dist": "electron-builder",
-    "dist:win": "electron-builder --win"
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -19,6 +26,8 @@
   "build": {
     "appId": "com.awen9.lanchat",
     "productName": "局域网聊天室",
+    "artifactName": "lan-chat-${version}-${os}-${arch}.${ext}",
+    "afterPack": "scripts/after-pack.cjs",
     "files": [
       "main.js",
       "server.js",
@@ -39,6 +48,26 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.social-networking",
+      "icon": "build/icon.icns",
+      "darkModeSupport": true,
+      "identity": null,
+      "extendInfo": {
+        "LSMinimumSystemVersion": "10.15"
+      }
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Network"
     }
   },
   "allowScripts": {

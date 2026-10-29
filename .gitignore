@@ -3,6 +3,13 @@ dist/
 out/
 uploads/
 *.log
+# 本地构建缓存（electron / electron-builder 下载物）
+.npm-cache/
+.electron-cache/
+.electron-builder-cache/
+.electron-dist/
 .env
 .env.*
 !.env.example
+# 本地隐私名单：只在本机生效，绝不入库
+.privacy-denylist

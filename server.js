@@ -313,19 +313,7 @@ function startServer(port, options) {
   });
 
   server.listen(port, HOST, () => {
-    console.log('');
-    console.log('  ┌──────────────────────────────────────────────┐');
-    console.log('  │              局域网聊天室已启动              │');
-    console.log('  └──────────────────────────────────────────────┘');
-    console.log('');
-    console.log(`  本机访问:     http://localhost:${port}`);
-    for (const addr of lanAddresses()) {
-      console.log(`  局域网访问:   http://${addr}:${port}`);
-    }
-    console.log('');
-    console.log('  其他电脑用浏览器打开上面的「局域网访问」地址即可。');
-    console.log('  若首次弹 Windows 防火墙提示，请勾选「专用网络」并点「允许访问」。');
-    console.log('');
+    printBanner(port, process.platform);
   });
 
   return server;
@@ -335,7 +323,36 @@ function getPort() {
   return currentPort;
 }
 
-module.exports = { startServer, getPort };
+/** 各平台放行端口的提示不一样，别让 macOS 用户去找「Windows 防火墙」 */
+function firewallHint(platform, port) {
+  switch (platform) {
+    case 'darwin':
+      return '  首次启动若弹「允许局域网连接」提示，请点「允许」；如果之前误点了拒绝，\n' +
+        '  到「系统设置 › 隐私与安全性 › 本地网络」里重新打开。';
+    case 'win32':
+      return '  若首次弹 Windows 防火墙提示，请勾选「专用网络」并点「允许访问」。';
+    default:
+      return `  若系统开了防火墙，请放行 TCP ${port}（例如 ufw allow ${port}/tcp）。`;
+  }
+}
+
+function printBanner(port, platform) {
+  console.log('');
+  console.log('  ┌──────────────────────────────────────────────┐');
+  console.log('  │              局域网聊天室已启动              │');
+  console.log('  └──────────────────────────────────────────────┘');
+  console.log('');
+  console.log(`  本机访问:     http://127.0.0.1:${port}`);
+  for (const addr of lanAddresses()) {
+    console.log(`  局域网访问:   http://${addr}:${port}`);
+  }
+  console.log('');
+  console.log('  其他电脑用浏览器打开上面的「局域网访问」地址即可。');
+  console.log(firewallHint(platform, port));
+  console.log('');
+}
+
+module.exports = { startServer, getPort, printBanner, firewallHint, lanAddresses };
 
 if (require.main === module) {
   startServer(process.argv[2]);
