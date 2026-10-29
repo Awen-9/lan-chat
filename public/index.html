@@ -8,45 +8,76 @@
 </head>
 <body>
   <header>
-    <div class="brand">
-      <span class="dot" id="connDot"></span>
-      <h1>局域网聊天室</h1>
-      <span class="status" id="statusText">连接中…</span>
+    <div class="header-row">
+      <div class="brand">
+        <span class="dot" id="connDot"></span>
+        <h1>局域网聊天室</h1>
+        <span class="status" id="statusText">连接中…</span>
+        <span class="unread-badge" id="unreadBadge" hidden></span>
+      </div>
+      <div class="me">
+        <label for="nick">昵称</label>
+        <input id="nick" maxlength="30" placeholder="输入你的昵称" autocomplete="off">
+        <button id="themeBtn" class="icon-btn" title="切换主题">🌙</button>
+      </div>
     </div>
-    <div class="me">
-      <label for="nick">昵称</label>
-      <input id="nick" maxlength="30" placeholder="输入你的昵称" autocomplete="off">
-      <button id="themeBtn" class="icon-btn" title="切换深浅色主题">🌙</button>
+    <div class="addr-bar">
+      <span class="addr-hint">局域网访问</span>
+      <span class="addr" id="lanAddr">检测中…</span>
+      <button class="copy-addr" id="copyAddr">复制</button>
     </div>
   </header>
 
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-pane="chat">💬 聊天</button>
+    <button class="tab" data-pane="files">📁 文件</button>
+  </nav>
+
   <main>
-    <section class="pane chat">
+    <section class="pane chat active" id="paneChat">
       <div class="pane-head">
         <h2>聊天</h2>
         <div class="online" id="online"></div>
       </div>
-      <div class="messages" id="messages"></div>
+      <div class="messages" id="messages">
+        <div class="empty">👋 欢迎使用局域网聊天室<br>下方输入消息开始聊天，右侧可传文件</div>
+      </div>
       <form class="composer" id="composer" autocomplete="off">
-        <input id="input" maxlength="4000" placeholder="输入消息，回车发送">
+        <button type="button" class="icon-btn" id="emojiBtn" title="表情">😊</button>
+        <textarea id="input" rows="1" maxlength="4000" placeholder="输入消息，回车发送，Ctrl+Enter 换行"></textarea>
         <button type="submit">发送</button>
       </form>
+      <div class="emoji-panel" id="emojiPanel" hidden></div>
     </section>
 
-    <section class="pane files">
+    <section class="pane files" id="paneFiles">
       <div class="pane-head">
         <h2>文件</h2>
         <button id="uploadBtn" class="btn">上传文件</button>
         <input type="file" id="fileInput" multiple hidden>
       </div>
+      <div class="file-toolbar">
+        <input class="file-search" id="fileSearch" placeholder="搜索文件…">
+        <select class="file-sort" id="fileSort">
+          <option value="time-desc">时间 ↓</option>
+          <option value="time-asc">时间 ↑</option>
+          <option value="name">名称</option>
+          <option value="size">大小</option>
+        </select>
+      </div>
       <div class="file-list" id="fileList"></div>
-      <div class="drop-hint" id="dropHint">拖拽文件到此处上传</div>
+      <div class="drop-hint" id="dropHint">拖拽文件到此处上传，或直接 Ctrl+V 粘贴图片</div>
       <div class="upload-bar" id="uploadBar" hidden>
         <span id="uploadBarText"></span>
         <div class="upload-bar-track"><div class="upload-bar-fill" id="uploadBarFill"></div></div>
       </div>
     </section>
   </main>
+
+  <div class="lightbox" id="lightbox" hidden>
+    <img id="lightboxImg" alt="">
+    <button class="lightbox-close" id="lightboxClose" title="关闭">✕</button>
+  </div>
 
   <script src="/app.js"></script>
 </body>

@@ -47,6 +47,26 @@ function isImage(name) {
   return IMAGE_EXT.has(path.extname(String(name)).toLowerCase());
 }
 
+function isVirtualAddr(addr) {
+  const p = String(addr).split('.').map(Number);
+  if (p[0] === 127) return true;                             // 回环
+  if (p[0] === 169 && p[1] === 254) return true;             // 链路本地
+  if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true; // WSL/Hyper-V/Docker 虚拟网段
+  return false;
+}
+
+function lanAddresses() {
+  const out = [];
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const a of list || []) {
+      if (a.family === 'IPv4' && !a.internal && !isVirtualAddr(a.address)) {
+        out.push(a.address);
+      }
+    }
+  }
+  return [...new Set(out)];
+}
+
 function sanitizeFilename(raw) {
   let name = String(raw || 'file')
     .replace(/[\\/]/g, '_')
@@ -268,6 +288,11 @@ function startServer(port, options) {
       return;
     }
 
+    // ---- 服务信息（局域网地址）----
+    if (pathname === '/api/info' && req.method === 'GET') {
+      return json(res, 200, { port, addresses: lanAddresses() });
+    }
+
     // ---- 静态资源 ----
     if (req.method === 'GET') return serveStatic(res, url.pathname);
 
@@ -294,12 +319,8 @@ function startServer(port, options) {
     console.log('  └──────────────────────────────────────────────┘');
     console.log('');
     console.log(`  本机访问:     http://localhost:${port}`);
-    for (const addrs of Object.values(os.networkInterfaces())) {
-      for (const a of addrs || []) {
-        if (a.family === 'IPv4' && !a.internal) {
-          console.log(`  局域网访问:   http://${a.address}:${port}`);
-        }
-      }
+    for (const addr of lanAddresses()) {
+      console.log(`  局域网访问:   http://${addr}:${port}`);
     }
     console.log('');
     console.log('  其他电脑用浏览器打开上面的「局域网访问」地址即可。');
