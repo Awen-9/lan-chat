@@ -54,6 +54,7 @@
       "artifactName": "lan-chat-portable-${version}-${arch}.${ext}"
     },
     "mac": {
+      "artifactName": "lan-chat-mac-${version}-${arch}.${ext}",
       "target": [
         "dmg",
         "zip"

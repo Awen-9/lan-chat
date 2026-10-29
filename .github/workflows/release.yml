@@ -6,10 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,16 +21,59 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Build exe
+      - name: Build Windows
         run: npm run dist:win -- --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build macOS
+        run: npm run dist:mac -- --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/*.exe
+          files: artifacts/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
