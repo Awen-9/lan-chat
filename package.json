@@ -27,7 +27,6 @@
   "build": {
     "appId": "com.awen9.lanchat",
     "productName": "局域网聊天室",
-    "artifactName": "lan-chat-${version}-${os}-${arch}.${ext}",
     "afterPack": "scripts/after-pack.cjs",
     "files": [
       "main.js",
@@ -47,8 +46,12 @@
       "signAndEditExecutable": false
     },
     "nsis": {
+      "artifactName": "lan-chat-setup-${version}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "portable": {
+      "artifactName": "lan-chat-portable-${version}-${arch}.${ext}"
     },
     "mac": {
       "target": [
