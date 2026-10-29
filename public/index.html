@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>局域网聊天室</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="dot" id="connDot"></span>
+      <h1>局域网聊天室</h1>
+      <span class="status" id="statusText">连接中…</span>
+    </div>
+    <div class="me">
+      <label for="nick">昵称</label>
+      <input id="nick" maxlength="30" placeholder="输入你的昵称" autocomplete="off">
+      <button id="themeBtn" class="icon-btn" title="切换深浅色主题">🌙</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="pane chat">
+      <div class="pane-head">
+        <h2>聊天</h2>
+        <div class="online" id="online"></div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <form class="composer" id="composer" autocomplete="off">
+        <input id="input" maxlength="4000" placeholder="输入消息，回车发送">
+        <button type="submit">发送</button>
+      </form>
+    </section>
+
+    <section class="pane files">
+      <div class="pane-head">
+        <h2>文件</h2>
+        <button id="uploadBtn" class="btn">上传文件</button>
+        <input type="file" id="fileInput" multiple hidden>
+      </div>
+      <div class="file-list" id="fileList"></div>
+      <div class="drop-hint" id="dropHint">拖拽文件到此处上传</div>
+      <div class="upload-bar" id="uploadBar" hidden>
+        <span id="uploadBarText"></span>
+        <div class="upload-bar-track"><div class="upload-bar-fill" id="uploadBarFill"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

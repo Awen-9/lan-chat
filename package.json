@@ -1,0 +1,43 @@
+{
+  "name": "lan-chat",
+  "version": "1.0.0",
+  "description": "局域网聊天室 + 文件互传（Electron 桌面应用，零运行时依赖）",
+  "main": "main.js",
+  "author": "Awen-9",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "server": "node server.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.awen9.lanchat",
+    "productName": "局域网聊天室",
+    "files": [
+      "main.js",
+      "server.js",
+      "public/**/*",
+      "build/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
