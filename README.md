@@ -38,7 +38,7 @@ node server.js     # 默认端口 3000，可 node server.js 8080
 
 ## 其它电脑怎么连
 
-启动后终端会打印「局域网访问」地址（形如 `http://192.168.1.3:3000`），
+启动后终端会打印「局域网访问」地址（形如 `http://192.168.x.x:3000`），
 同网段其它电脑用浏览器打开该地址即可，无需安装任何东西。
 
 ## 连接不上的排查
@@ -66,5 +66,4 @@ node server.js     # 默认端口 3000，可 node server.js 8080
 
 ## 约定
 
-遵循本机规范：代码入口 `D:\Dev\bootstrap\AGENTS.md`，细则见 `dev-machine-layout` 技能。
 密钥走 `.env`（不入库），示例见 `.env.example`。
