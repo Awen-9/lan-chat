@@ -42,7 +42,8 @@ npm run hooks:install
 
 - 同一行加 `privacy-allow: 原因`，只放行这一行；
 - 用 `.privacyignore` 忽略整个文件（锁文件、构建产物已默认忽略）；
-- 把自己的真名、手机号等写进 `.privacy-denylist`（已 gitignore，只在本机生效，绝不入库），示例见 `.privacy-denylist.example`。
+- 工具只能匹配格式；**「这段内容会不会指向某个真人」由 agent 提交前通读 diff 判断**，
+  清单见仓库根目录的 `AGENTS.md`，不需要向 agent 交代任何个人信息。
 
 ```bash
 npm run check:privacy          # 手动全量扫描

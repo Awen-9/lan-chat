@@ -10,6 +10,7 @@
     "dev": "electron .",
     "server": "node server.js",
     "check:privacy": "node scripts/privacy-check.cjs --all",
+    "review:staged": "node scripts/privacy-check.cjs --staged --review",
     "check:privacy:staged": "node scripts/privacy-check.cjs --staged",
     "test:privacy": "node --test scripts/privacy-check.test.cjs",
     "hooks:install": "git config core.hooksPath .githooks",

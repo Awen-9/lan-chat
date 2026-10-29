@@ -9,11 +9,11 @@
  *   node scripts/privacy-check.cjs --all       # pre-push / CI：扫全部入库文件
  *   node scripts/privacy-check.cjs --files a.md src/b.js
  *
- * 三种放行方式（从弱到强）：
+ * 两种放行方式：
  *   1. 同一行写 `privacy-allow`（可跟原因），只放行这一行；
- *   2. 在 `.privacyignore` 里写路径 glob，整个文件不扫；
- *   3. 把只属于你自己的字符串（真名、手机号、家庭住址…）写进 `.privacy-denylist`，
- *      该文件已被 gitignore，只在本机生效，永远不会被提交。
+ *   2. 在 `.privacyignore` 里写路径 glob，整个文件不扫。
+ *
+ * 工具只负责格式兜底；「这段话会不会指向某个具体真人」由 agent 读 diff 判断（见 AGENTS.md）。
  */
 
 const { execFileSync } = require('node:child_process');
@@ -34,7 +34,6 @@ const SKIP_DIRS = [
 // 这些文件名一旦入库基本就是把密钥/私人数据传上去了
 const FORBIDDEN_FILES = [
   { re: /^\.env(\.(?!example$|sample$|template$).*)?$/, why: '环境变量文件（.env）里通常有密钥，只提交 .env.example' },
-  { re: /^\.privacy-denylist$/, why: '本地隐私名单（只应存在于本机）' },
   { re: /(^|\/)(id_rsa|id_ed25519|id_ecdsa)(\.pub)?$/, why: 'SSH 私钥' },
   { re: /\.(pem|p12|pfx|key|kdbx|ovpn)$/i, why: '密钥/证书文件' },
   { re: /^uploads\//, why: '上传的文件目录（可能含私人文件）' },
@@ -176,16 +175,6 @@ function loadIgnore(root) {
     .map(l => ({ glob: l, re: globToRegExp(l) }));
 }
 
-function loadDenylist(root) {
-  const file = path.join(root, '.privacy-denylist');
-  if (!fs.existsSync(file)) return [];
-  return fs.readFileSync(file, 'utf8')
-    .split(/\r?\n/)
-    .map(l => l.trim())
-    .filter(l => l && !l.startsWith('#'))
-    .map(l => l.toLowerCase());
-}
-
 function isIgnored(relPath, ignore) {
   return ignore.some(({ re }) => re.test(relPath));
 }
@@ -205,7 +194,7 @@ function mask(value) {
 /**
  * 扫一段文本。返回命中列表，方便单元测试。
  */
-function scanText(text, relPath = 'inline', denylist = []) {
+function scanText(text, relPath = 'inline') {
   const hits = [];
   const lines = text.split(/\r?\n/);
 
@@ -232,20 +221,6 @@ function scanText(text, relPath = 'inline', denylist = []) {
       }
     }
 
-    for (const term of denylist) {
-      if (term.length >= 3 && line.toLowerCase().includes(term)) {
-        hits.push({
-          file: relPath,
-          line: lineNo,
-          rule: 'denylist',
-          label: '本地隐私名单',
-          severity: 'block',
-          value: mask(term),
-          hint: '`.privacy-denylist` 里登记过的内容',
-        });
-        break;
-      }
-    }
   });
 
   return hits;
@@ -278,11 +253,13 @@ function main(argv) {
   process.chdir(root);
 
   let mode = 'staged';
+  let review = false;
   let files = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--all') mode = 'all';
     else if (a === '--staged') mode = 'staged';
+    else if (a === '--review') review = true;
     else if (a === '--files') { mode = 'files'; files = argv.slice(i + 1); break; }
     else if (a === '-h' || a === '--help') {
       console.log('用法: node scripts/privacy-check.cjs [--staged|--all|--files <paths...>]');
@@ -291,7 +268,6 @@ function main(argv) {
   }
 
   const ignore = loadIgnore(root);
-  const denylist = loadDenylist(root);
 
   let selected;
   try {
@@ -328,11 +304,29 @@ function main(argv) {
     if (isBinary(relPath, buf)) { skipped.push(relPath); continue; }
 
     scanned++;
-    hits.push(...scanText(buf.toString('utf8'), relPath, denylist));
+    hits.push(...scanText(buf.toString('utf8'), relPath));
   }
 
   const blocked = hits.filter(h => h.severity === 'block');
   const warned = hits.filter(h => h.severity === 'warn');
+
+  if (review) {
+    let stat = '';
+    try {
+      const args = mode === 'staged' ? ['diff', '--cached', '--shortstat'] : ['diff', '--shortstat'];
+      stat = execFileSync('git', args, { encoding: 'utf8' }).trim();
+    } catch (_) { /* 忽略 */ }
+    console.log('');
+    console.log('  隐私审核（agent 必做，工具只负责兜底）');
+    console.log('  ────────────────────────────────────────');
+    if (stat) console.log(`  改动：${stat}`);
+    console.log('  逐条看一遍 diff，确认没有：');
+    console.log('    [ ] 真实姓名 / 昵称 / 住址 / 单位 / 学校');
+    console.log('    [ ] 手机号、微信号、QQ、私人邮箱、证件号、学号工号');
+    console.log('    [ ] 本机登录名、绝对路径、设备名、NAS / 路由器型号');
+    console.log('    [ ] 真实公网 IP、内网域名、聊天记录、含隐私的截图');
+    console.log('');
+  }
 
   const modeText = mode === 'staged' ? '提交内容' : mode === 'all' ? '全部入库文件' : '指定文件';
   console.log(`隐私检查（${modeText}）：扫描 ${scanned} 个文件，跳过 ${skipped.length} 个`);
@@ -355,7 +349,7 @@ function main(argv) {
   console.log(`  拦截了 ${blocked.length} 处可能泄露本人信息的内容：`);
   console.log('    · 删掉它们，或换成占位符；');
   console.log('    · 确实是误报就在同一行加 `privacy-allow: 原因`；');
-  console.log('    · 个人专属字符串写进 `.privacy-denylist`（本机生效，不会上传）。');
+  console.log('    · 拿不准就问一句，别硬推。');
   return 1;
 }
 

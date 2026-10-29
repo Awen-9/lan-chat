@@ -128,8 +128,9 @@ npm run hooks:install     # 装 git 钩子（npm install 时也会自动装）
 npm run check:privacy     # 手动全量扫描
 ```
 
-  误报可以在同一行写 `privacy-allow: 原因`，或用 `.privacyignore` 忽略整个文件；
-  自己的真名、手机号等写进 `.privacy-denylist`（已 gitignore，只在本机生效）。
+  误报可以在同一行写 `privacy-allow: 原因`，或用 `.privacyignore` 忽略整个文件。
+- 工具只匹配格式，判断不了「会不会指向某个真人」：每次提交前 agent 会按 [AGENTS.md](AGENTS.md)
+  把 diff 通读一遍，人不用交代任何个人信息。
 
 ## 结构
 
@@ -140,7 +141,8 @@ npm run check:privacy     # 手动全量扫描
 - `scripts/after-pack.cjs` — 打包钩子，macOS 上补 ad-hoc 签名
 - `scripts/privacy-check.cjs` — 隐私检查器（零依赖，钩子与 CI 共用）
 - `.githooks/` — pre-commit / pre-push 钩子
-- `.privacyignore` / `.privacy-denylist.example` — 检查白名单与本地隐私名单示例
+- `.privacyignore` — 检查白名单（锁文件、构建产物）
+- `AGENTS.md` — 提交前隐私审核清单（agent 执行）
 
 ## 约定
 
