@@ -397,7 +397,11 @@ function uploadFile(file, onProgress) {
     xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
-      else reject(new Error('HTTP ' + xhr.status));
+      else {
+        let msg = 'HTTP ' + xhr.status;
+        try { msg = JSON.parse(xhr.responseText).error || msg; } catch (_) {}
+        reject(new Error(msg));
+      }
     };
     xhr.onerror = () => reject(new Error('网络错误'));
     xhr.send(file);

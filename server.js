@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const MAX_HISTORY = 200;
+const DEFAULT_MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 默认 500MB
 
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif']);
 
@@ -76,12 +77,41 @@ function sanitizeFilename(raw) {
   return name || 'file';
 }
 
+/**
+ * 统一文件响应：
+ * - inline=false → 强制下载（attachment + nosniff）
+ * - inline=true  → 内联显示（仅图片用，附加 nosniff + CSP 防止 SVG 等直接打开时执行脚本）
+ */
+function serveFile(res, filePath, st, { inline }) {
+  const name = path.basename(filePath);
+  const ext = path.extname(name).toLowerCase();
+  const headers = {
+    'Content-Length': st.size,
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (inline) {
+    headers['Content-Type'] = MIME[ext] || 'application/octet-stream';
+    headers['Cache-Control'] = 'max-age=3600';
+    headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'";
+  } else {
+    headers['Content-Type'] = 'application/octet-stream';
+    headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(name)}`;
+  }
+  res.writeHead(200, headers);
+  fs.createReadStream(filePath).pipe(res);
+}
+
 function startServer(port, options) {
   const opts = options || {};
   port = Number(port || process.env.PORT || 3000);
   currentPort = port;
   const HOST = '0.0.0.0';
   const uploadDir = opts.uploadDir || path.join(ROOT, 'uploads');
+  const maxUploadBytes = (() => {
+    if (opts.maxUploadBytes != null) return Number(opts.maxUploadBytes);
+    if (process.env.LAN_CHAT_MAX_UPLOAD_MB) return Number(process.env.LAN_CHAT_MAX_UPLOAD_MB) * 1024 * 1024;
+    return DEFAULT_MAX_UPLOAD_BYTES;
+  })();
   fs.mkdirSync(uploadDir, { recursive: true });
 
   const clients = new Map(); // res -> { name }
@@ -213,25 +243,63 @@ function startServer(port, options) {
     if (pathname === '/api/upload' && req.method === 'POST') {
       const rawName = sanitizeFilename(url.searchParams.get('name') || req.headers['x-file-name']);
       const uploader = String(url.searchParams.get('user') || '匿名').slice(0, 30) || '匿名';
+      const overLimitMB = Math.max(1, Math.round(maxUploadBytes / 1024 / 1024));
+      const overLimitMsg = `文件超过 ${overLimitMB} MB 上限`;
+
+      // 有 Content-Length 且超限：直接 413，不创建文件
+      const declaredLength = Number(req.headers['content-length']);
+      if (Number.isFinite(declaredLength) && declaredLength > maxUploadBytes) {
+        req.resume(); // 丢弃请求体，避免连接挂起
+        return json(res, 413, { ok: false, error: overLimitMsg });
+      }
+
       const dest = uniquePath(rawName);
       const finalName = path.basename(dest);
       const ws = fs.createWriteStream(dest);
-      let size = 0;
+      let received = 0;
+      let settled = false;
 
-      req.on('data', c => { size += c.length; });
-      req.pipe(ws);
-      req.on('error', () => ws.destroy());
-      ws.on('error', () => { try { fs.unlinkSync(dest); } catch (_) {} });
+      function removePartial() {
+        const unlink = () => { try { fs.unlinkSync(dest); } catch (_) {} };
+        if (ws.destroyed) unlink();
+        else { ws.once('close', unlink); ws.destroy(); }
+      }
+
+      function abort(status, msg) {
+        if (settled) return;
+        settled = true;
+        req.unpipe(ws);
+        removePartial();
+        if (status) {
+          if (!res.headersSent) json(res, status, { ok: false, error: msg });
+          else res.end();
+        }
+      }
+
+      req.on('data', chunk => {
+        if (settled) return;
+        received += chunk.length;
+        if (received > maxUploadBytes) abort(413, overLimitMsg);
+      });
+
+      req.on('aborted', () => abort(0, null));
+      req.on('error', () => abort(0, null));
+      ws.on('error', () => abort(0, null));
+
       ws.on('finish', () => {
+        if (settled) return;
+        settled = true;
         pushMessage({
           id: crypto.randomUUID(),
           name: uploader,
           text: '上传了一个文件',
           time: Date.now(),
-          file: { name: finalName, size, type: isImage(finalName) ? 'image' : 'file' },
+          file: { name: finalName, size: received, type: isImage(finalName) ? 'image' : 'file' },
         });
-        json(res, 200, { ok: true, name: finalName, size });
+        json(res, 200, { ok: true, name: finalName, size: received });
       });
+
+      req.pipe(ws);
       return;
     }
 
@@ -244,17 +312,12 @@ function startServer(port, options) {
           res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
           return res.end('文件不存在');
         }
-        res.writeHead(200, {
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': st.size,
-          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
-        });
-        fs.createReadStream(p).pipe(res);
+        serveFile(res, p, st, { inline: false });
       });
       return;
     }
 
-    // ---- 内联预览（图片用，浏览器直接显示）----
+    // ---- 内联预览（仅图片内联，其它走 attachment）----
     if (pathname.startsWith('/api/view/') && req.method === 'GET') {
       const name = path.basename(pathname.slice('/api/view/'.length));
       const p = path.join(uploadDir, name);
@@ -263,13 +326,7 @@ function startServer(port, options) {
           res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
           return res.end('文件不存在');
         }
-        const ext = path.extname(name).toLowerCase();
-        res.writeHead(200, {
-          'Content-Type': MIME[ext] || 'application/octet-stream',
-          'Content-Length': st.size,
-          'Cache-Control': 'max-age=3600',
-        });
-        fs.createReadStream(p).pipe(res);
+        serveFile(res, p, st, { inline: isImage(name) });
       });
       return;
     }

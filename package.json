@@ -13,6 +13,7 @@
     "review:staged": "node scripts/privacy-check.cjs --staged --review",
     "check:privacy:staged": "node scripts/privacy-check.cjs --staged",
     "test:privacy": "node --test scripts/privacy-check.test.cjs",
+    "test": "node --test test/server.test.js scripts/privacy-check.test.cjs",
     "hooks:install": "git config core.hooksPath .githooks",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
