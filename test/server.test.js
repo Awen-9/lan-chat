@@ -132,3 +132,43 @@ test('L2: 中途断开不残留文件', async () => {
     assert.equal(fs.readdirSync(uploadDir).length, 0);
   });
 });
+
+// ---- L3：可选口令 ----
+test('L3: 未设置口令时无鉴权（行为不变）', async () => {
+  await withServer({}, async ({ port }) => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/info`);
+    assert.equal(res.status, 200);
+  });
+});
+
+test('L3: 设置口令后未登录 401，登录后带 cookie 放行', async () => {
+  await withServer({ passcode: 'secret123' }, async ({ port }) => {
+    // 未登录
+    assert.equal((await fetch(`http://127.0.0.1:${port}/api/info`)).status, 401);
+
+    // 错误口令
+    const wrong = await fetch(`http://127.0.0.1:${port}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode: 'nope' }),
+    });
+    assert.equal(wrong.status, 401);
+
+    // 正确口令 → 200 + cookie
+    const ok = await fetch(`http://127.0.0.1:${port}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode: 'secret123' }),
+    });
+    assert.equal(ok.status, 200);
+    const setCookie = ok.headers.get('set-cookie') || '';
+    assert.match(setCookie, /lanchat_token=/);
+    assert.match(setCookie, /SameSite=Strict/);
+    assert.match(setCookie, /HttpOnly/);
+
+    // 带 cookie 访问
+    const cookie = setCookie.split(';')[0];
+    const authed = await fetch(`http://127.0.0.1:${port}/api/info`, { headers: { Cookie: cookie } });
+    assert.equal(authed.status, 200);
+  });
+});

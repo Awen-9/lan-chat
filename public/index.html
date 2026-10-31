@@ -74,6 +74,17 @@
     </section>
   </main>
 
+  <div class="passcode-modal" id="passcodeModal" hidden>
+    <div class="passcode-box">
+      <h3>请输入访问口令</h3>
+      <input type="password" id="passcodeInput" maxlength="100" placeholder="口令" autocomplete="off">
+      <div class="passcode-actions">
+        <button type="button" class="btn ghost" id="passcodeCancel">取消</button>
+        <button type="button" class="btn" id="passcodeOk">确定</button>
+      </div>
+    </div>
+  </div>
+
   <div class="lightbox" id="lightbox" hidden>
     <img id="lightboxImg" alt="">
     <button class="lightbox-close" id="lightboxClose" title="关闭">✕</button>

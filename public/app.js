@@ -509,6 +509,53 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeLightbox(); if (!emojiPanel.hidden) emojiPanel.hidden = true; }
 });
 
+// ---- 口令登录 ----
+const passcodeModal = $('#passcodeModal');
+const passcodeInput = $('#passcodeInput');
+const passcodeOk = $('#passcodeOk');
+const passcodeCancel = $('#passcodeCancel');
+
+function promptPasscode() {
+  return new Promise(resolve => {
+    passcodeInput.value = '';
+    passcodeModal.hidden = false;
+    passcodeInput.focus();
+    const ok = () => { passcodeModal.hidden = true; cleanup(); resolve(passcodeInput.value); };
+    const cancel = () => { passcodeModal.hidden = true; cleanup(); resolve(null); };
+    const key = e => { if (e.key === 'Enter') ok(); else if (e.key === 'Escape') cancel(); };
+    const cleanup = () => {
+      passcodeOk.removeEventListener('click', ok);
+      passcodeCancel.removeEventListener('click', cancel);
+      passcodeInput.removeEventListener('keydown', key);
+    };
+    passcodeOk.addEventListener('click', ok);
+    passcodeCancel.addEventListener('click', cancel);
+    passcodeInput.addEventListener('keydown', key);
+  });
+}
+
+async function login(passcode) {
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passcode }),
+  });
+  return res.ok;
+}
+
+async function ensureAuth() {
+  try {
+    const res = await fetch('/api/info');
+    if (res.status !== 401) return;
+  } catch (_) { return; }
+  // 需要口令：循环弹框，直到输入正确或取消
+  while (true) {
+    const p = await promptPasscode();
+    if (p == null) return;
+    if (await login(p)) return;
+  }
+}
+
 // ---- 初始化 ----
 if (!myName) {
   myName = '访客' + Math.floor(1000 + Math.random() * 9000);
@@ -516,6 +563,9 @@ if (!myName) {
   localStorage.setItem('lanchat.nick', myName);
 }
 document.addEventListener('click', requestNotifyPermission, { once: true });
-connect();
-loadFiles();
-loadInfo();
+(async function init() {
+  await ensureAuth();
+  connect();
+  loadFiles();
+  loadInfo();
+})();

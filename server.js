@@ -114,6 +114,38 @@ function startServer(port, options) {
   })();
   fs.mkdirSync(uploadDir, { recursive: true });
 
+  // 可选口令：未设置 LAN_CHAT_PASSCODE（或 opts.passcode）时完全禁用鉴权
+  const passcode = opts.passcode != null ? String(opts.passcode) : (process.env.LAN_CHAT_PASSCODE || null);
+  const validTokens = new Set();
+
+  function getCookie(req, name) {
+    const header = req.headers.cookie || '';
+    for (const part of header.split(';')) {
+      const eq = part.indexOf('=');
+      if (eq < 0) continue;
+      if (part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+    }
+    return null;
+  }
+
+  function issueToken() {
+    const token = crypto.randomBytes(32).toString('hex');
+    validTokens.add(token);
+    return token;
+  }
+
+  function passcodeMatches(input) {
+    const a = crypto.createHash('sha256').update(String(passcode)).digest();
+    const b = crypto.createHash('sha256').update(String(input == null ? '' : input)).digest();
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  function isAuthorized(req) {
+    if (!passcode) return true;
+    const token = getCookie(req, 'lanchat_token');
+    return token != null && validTokens.has(token);
+  }
+
   const clients = new Map(); // res -> { name }
   let history = [];
 
@@ -177,6 +209,40 @@ function startServer(port, options) {
     const url = new URL(req.url, 'http://localhost');
     let pathname;
     try { pathname = decodeURIComponent(url.pathname); } catch (_) { pathname = url.pathname; }
+
+    // 可选口令鉴权：启用时，除 /api/login 外，所有 /api/* 需要有效 cookie
+    if (passcode && pathname.startsWith('/api/') && pathname !== '/api/login') {
+      if (!isAuthorized(req)) {
+        return json(res, 401, { ok: false, error: '需要口令' });
+      }
+    }
+
+    // ---- 登录（仅启用口令时才有意义）----
+    if (pathname === '/api/login' && req.method === 'POST') {
+      if (!passcode) return json(res, 200, { ok: true });
+      let body = '';
+      req.on('data', c => {
+        body += c;
+        if (body.length > 4096) req.destroy();
+      });
+      req.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          if (passcodeMatches(parsed.passcode)) {
+            const token = issueToken();
+            res.writeHead(200, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Set-Cookie': `lanchat_token=${token}; HttpOnly; SameSite=Strict; Path=/`,
+            });
+            return res.end(JSON.stringify({ ok: true }));
+          }
+          json(res, 401, { ok: false, error: '口令错误' });
+        } catch (_) {
+          json(res, 400, { ok: false, error: '请求格式错误' });
+        }
+      });
+      return;
+    }
 
     // ---- SSE 实时推送 ----
     if (pathname === '/api/events') {

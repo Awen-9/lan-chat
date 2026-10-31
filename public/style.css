@@ -185,6 +185,15 @@ main { flex: 1 1 auto; display: flex; min-height: 0; }
 .lightbox-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); color: #fff; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
 .lightbox-close:hover { background: rgba(255,255,255,0.3); }
 
+.passcode-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
+.passcode-box { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; width: 300px; box-shadow: var(--shadow); }
+.passcode-box h3 { margin: 0 0 12px; font-size: 15px; font-weight: 650; }
+.passcode-box input { width: 100%; background: var(--panel2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 14px; outline: none; margin-bottom: 12px; }
+.passcode-box input:focus { border-color: var(--accent); }
+.passcode-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn.ghost:hover { color: var(--text); border-color: var(--muted); }
+
 @media (max-width: 720px) {
   .tabs { display: flex; }
   main { flex-direction: column; }
