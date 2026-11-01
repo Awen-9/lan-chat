@@ -1,0 +1,5 @@
+#!/bin/sh
+# 推送前兜底：全量扫一遍，避免历史里夹带没被 pre-commit 拦下的内容
+root=$(git rev-parse --show-toplevel) || exit 0
+echo "推送前隐私检查…"
+exec node "$root/scripts/privacy-check.cjs" --all
